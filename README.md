@@ -30,6 +30,10 @@
 
 注意：
 1、一定要通过DHCP获取itv网段的IP地址。
+
 2、获取itv网段的IP地址时，需要提供option 60和option 12(即hostname)
+
 3、option60可以通过option60_toolkit.py生成，userid为[AccessUserName],password为[PassWord]
+
 4、option12就是stbId
+
