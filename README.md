@@ -26,3 +26,8 @@
     ipadress = "XXXXXXXXX"   # Device.LAN.IPAddress 机顶盒的IP地址，后续要修改为你运行抓取程序所在电脑的IP地址
     stbtype = "B860AV2.1-T-NW"    # Device.DeviceSummary 机顶盒型号，实测可以随便填。
 
+将上述信息更新到getPlaylist.py脚本中
+
+注意：
+1、一定要通过DHCP获取itv网段的IP地址。
+2、获取itv网段的IP地址时，需要提供option 60认证。
