@@ -29,6 +29,7 @@
 将上述信息更新到getPlaylist.py脚本中
 
 注意：
+
 1、一定要通过DHCP获取itv网段的IP地址。
 
 2、获取itv网段的IP地址时，需要提供option 60和option 12(即hostname)
