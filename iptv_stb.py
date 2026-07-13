@@ -1,27 +1,31 @@
 from playwright.sync_api import sync_playwright
-
+import json
 import requests
 
+# 用户配置
 UserID = "025开头的12位号码"
 PassWord = "六位iptv密码"
 stbId = "XXXXXXXXXXXXXXXXXX"
 Macadress = "机顶盒MAC地址"
 ipadress = "获取的iptv专网的IP地址"
 
+# 代理配置
+PROXY_SERVER = "socks5://127.0.0.1:1080"
 
-# 从 CDN 获取 crypto-js
+# 从 CDN 获取 crypto-js（不走代理）
 cryptojs = requests.get(
-    "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"
+    "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js",
+    timeout=10
 ).text
 
 
 with sync_playwright() as p:
 
     browser = p.chromium.launch(
-        headless=False,
-        # proxy={
-        #     "server": "socks5://127.0.0.1:1080"
-        # }
+        headless=True,
+        proxy={
+            "server": PROXY_SERVER
+        }
     )
 
     context = browser.new_context(
@@ -34,8 +38,8 @@ with sync_playwright() as p:
     state = {"done": False}
 
     def on_response(response):
+        print(f"响应已收到: {response.status}, {response.url}", flush=True)
         if "frameset_builder.jsp" in response.url:
-            print("[frameset_builder.jsp] 响应已收到", flush=True)
             state["done"] = True
 
     page.on("response", on_response)
@@ -43,95 +47,22 @@ with sync_playwright() as p:
     # ✅ 1. 注入 CryptoJS
     page.add_init_script(cryptojs)
 
-    # ✅ 2. 注入 Authentication（同步实现）
-    page.add_init_script(f"""
-    (function() {{
+    # ✅ 2. 注入 Authentication（从外部 JS 文件加载）
+    with open("authentication.js", "r", encoding="utf-8") as f:
+        auth_script = f.read()
 
-        function DES_Encrypt(strMsg, strKey)
-        {{
-            while (strKey.length < 8)
-            {{
-                strKey += "0";
-            }}
+    # 替换占位符
+    auth_script = auth_script.replace("__AccessMethod__", "dhcp")
+    auth_script = auth_script.replace("__AccessUserName__", f"{UserID}@vod")
+    auth_script = auth_script.replace("__UserID__", UserID)
+    auth_script = auth_script.replace("__stbId__", stbId)
+    auth_script = auth_script.replace("__ipadress__", ipadress)
+    auth_script = auth_script.replace("__Macadress__", Macadress)
+    auth_script = auth_script.replace("__PassWord__", PassWord)
 
-            var keyHex = CryptoJS.enc.Utf8.parse(strKey);
-            var msgHex = CryptoJS.enc.Utf8.parse(strMsg);
+    page.add_init_script(auth_script)
 
-            var encrypted = CryptoJS.DES.encrypt(
-                msgHex,
-                keyHex,
-                {{
-                    mode: CryptoJS.mode.ECB,
-                    padding: CryptoJS.pad.Pkcs7
-                }}
-            );
-
-            return encrypted.ciphertext.toString().toUpperCase();
-        }}
-
-        window.Authentication = {{
-
-            config: {{
-                "AccessMethod": "dhcp",
-                "AccessUserName": "{UserID}@vod"
-            }},
-
-            CTCGetAuthInfo: function(AuthInfo)
-            {{
-                console.log("CTCGetAuthInfo:", AuthInfo);
-
-                var randomum = Math.floor(
-                    Math.random() * 90000000 + 10000000
-                ).toString();
-
-                var strEncry =
-                    randomum + "$" +
-                    AuthInfo + "$" +
-                    "{UserID}" + "$" +
-                    "{stbId}" + "$" +
-                    "{ipadress}" + "$" +
-                    "{Macadress}" +
-                    "$$CTC";
-
-                var Authenticator = DES_Encrypt(
-                    strEncry,
-                    "{PassWord}"
-                );
-
-                console.log("Authenticator:", Authenticator);
-
-                return Authenticator;
-            }},
-
-            CTCGetConfig: function(key)
-            {{
-                console.log("CTCGetConfig:", key);
-                return this.config[key] || "";
-            }},
-
-            CTCSetConfig: function(key, value)
-            {{
-                console.log("CTCSetConfig:", key, value);
-                if (key === "Channel") {{
-                    if (!this.config["Channel"]) {{
-                        this.config["Channel"] = [];
-                    }}
-                    this.config["Channel"].push(value);
-                }} else {{
-                    this.config[key] = value;
-                }}
-            }},
-
-            CTCStartUpdate: function()
-            {{
-                console.log("CTCStartUpdate");
-            }}
-
-        }};
-
-    }})();
-    """)
-
+    print("打开认证页面", flush=True)
     # ✅ 3. 打开认证页面
     page.goto(
         f"http://itv.jsinfo.net:8298/auth?UserID={UserID}&Action=Login",
@@ -142,13 +73,13 @@ with sync_playwright() as p:
     while not state["done"]:
         page.wait_for_timeout(100)
 
+    # 等待 JS 执行完成
     page.wait_for_timeout(3000)
 
     # 输出 Authentication.config 到文件
     config = page.evaluate("() => window.Authentication.config")
     with open("authentication_config.json", "w", encoding="utf-8") as f:
-        import json
         json.dump(config, f, ensure_ascii=False, indent=2)
-    print("[config] 已保存到 authentication_config.json", flush=True)
+    print("Authentication已保存到 authentication_config.json", flush=True)
 
     browser.close()
