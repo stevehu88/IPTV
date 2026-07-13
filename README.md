@@ -1,40 +1,40 @@
-# IPTV
-获取江苏电信IPTV播放列表
+# IPTV STB 认证脚本
 
-抓包，获取必要的信息
+模拟机顶盒认证流程，获取频道列表。
 
-在wireshark中筛选：_ws.col.info == "POST /web/tr069 HTTP/1.1 "
+## 安装依赖
 
+### 1. 安装 Python 依赖
 
-获取这个请求的所有Data:
+```bash
+pip install playwright requests
+```
 
-    POST /web/tr069 HTTP/1.1
-    Host: 180.100.134.11:5050
-    Content-Type: text/xml; charset="utf-8"
-    Keep-Alive: 
-    Connection: TE, Keep-Alive
-    TE: trailers
-    Content-Length: 3168
+### 2. 安装 Playwright Chromium 浏览器
 
-记录如下信息：
+```bash
+playwright install chromium
+```
 
-    UserID = "XXXXXXX"     # Device.ManagementServer.IPTVServiceUsername 用户账号
-    PassWord = "XXXXXX"   # Device.ManagementServer.ADSLPassword 用户密码
-    AccessUserName = "XXXXXXX"  # Device.ManagementServer.ADSLUsername 认证用户账号
-    stbId = "XXXXXXXX"      # Device.X_CTC_IPTV.STBID 机顶盒序列号
-    Macadress = "XXXXXXX"  # Device.LAN.MACAddress 机顶盒MAC
-    ipadress = "XXXXXXXXX"   # Device.LAN.IPAddress 机顶盒的IP地址，后续要修改为你运行抓取程序所在电脑的IP地址
-    stbtype = "B860AV2.1-T-NW"    # Device.DeviceSummary 机顶盒型号，实测可以随便填。
+## 配置
 
-将上述信息更新到getPlaylist.py脚本中
+在 `iptv_stb.py` 中修改以下配置：
 
-注意：
+| 字段 | 说明 | 示例 |
+|------|------|------|
+| `UserID` | 用户账号 |  |
+| `PassWord` | 用户密码 |  |
+| `stbId` | 机顶盒序列号 |  |
+| `Macadress` | 机顶盒 MAC 地址（大写） | |
+| `ipadress` | EPG 认证使用的 IP 地址 |  |
+| `PROXY_SERVER` | SOCKS5 代理地址 | `socks5://127.0.0.1:1080` |
 
-1、一定要通过DHCP获取itv网段的IP地址。
+## 运行
 
-2、获取itv网段的IP地址时，需要提供option 60和option 12(即hostname)
+```bash
+python iptv_stb.py
+```
 
-3、option60可以通过option60_toolkit.py生成，userid为[AccessUserName],password为[PassWord]
+## 输出
 
-4、option12就是stbId
-
+- `authentication_config.json` - Authentication 配置信息，包含频道列表
