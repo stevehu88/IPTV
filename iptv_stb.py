@@ -1,85 +1,103 @@
 from playwright.sync_api import sync_playwright
 import json
-import requests
+from pathlib import Path
 
+
+# ======================
 # 用户配置
-UserID = "025开头的12位号码"
-PassWord = "六位iptv密码"
-stbId = "XXXXXXXXXXXXXXXXXX"
-Macadress = "机顶盒MAC地址"
-ipadress = "获取的iptv专网的IP地址"
+# ======================
+USER_ID = "025208527583"
+PASSWORD = "922145"
+STB_ID = "ED100599007040700000C09296E79601"
+MAC_ADDRESS = "C0:92:96:E7:96:01"
+IP_ADDRESS = "10.250.206.219"
 
+AUTH_URL = f"http://itv.jsinfo.net:8298/auth?UserID={USER_ID}&Action=Login"
+
+# ======================
 # 代理配置
+# ======================
 PROXY_SERVER = "socks5://127.0.0.1:1080"
 
-# 从 CDN 获取 crypto-js（不走代理）
-cryptojs = requests.get(
-    "https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js",
-    timeout=10
-).text
+# ======================
+# 文件路径
+# ======================
+BASE_DIR = Path(__file__).parent
+CRYPTO_JS_PATH = BASE_DIR / "crypto-js.min.js"
+AUTH_JS_PATH = BASE_DIR / "authentication.js"
+MEDIAPLAYER_JS_PATH = BASE_DIR / "mediaplayer.js"
+OUTPUT_PATH = BASE_DIR / "authentication_config.json"
 
 
-with sync_playwright() as p:
+def load_scripts():
+    """加载并生成注入脚本"""
+    cryptojs = CRYPTO_JS_PATH.read_text(encoding="utf-8")
+    auth_template = AUTH_JS_PATH.read_text(encoding="utf-8")
 
-    browser = p.chromium.launch(
-        headless=True,
-        proxy={
-            "server": PROXY_SERVER
-        }
+    authjs = (
+        auth_template
+        .replace("__AccessMethod__", "dhcp")
+        .replace("__AccessUserName__", f"{USER_ID}@vod")
+        .replace("__UserID__", USER_ID)
+        .replace("__stbId__", STB_ID)
+        .replace("__ipadress__", IP_ADDRESS)
+        .replace("__Macadress__", MAC_ADDRESS)
+        .replace("__PassWord__", PASSWORD)
     )
 
-    context = browser.new_context(
-        user_agent="B700-V2A|Mozilla|5.0|ztebw(Chrome)|1.2.0;Resolution(PAL,720p,1080i) AppleWebKit/535.7 (KHTML, like Gecko) Chrome/16.0.912.63 Safari/535.7"
-    )
+    mediaplayerjs = MEDIAPLAYER_JS_PATH.read_text(encoding="utf-8")
 
-    page = context.new_page()
+    return cryptojs, authjs, mediaplayerjs
 
-    # 响应监听 - 检测 frameset_builder.jsp 响应
-    state = {"done": False}
 
-    def on_response(response):
-        print(f"响应已收到: {response.status}, {response.url}", flush=True)
-        if "frameset_builder.jsp" in response.url:
-            state["done"] = True
+def run():
+    cryptojs, authjs, mediaplayerjs = load_scripts()
 
-    page.on("response", on_response)
+    with sync_playwright() as p:
+        print("🚀 启动 Chromium...", flush=True)
 
-    # ✅ 1. 注入 CryptoJS
-    page.add_init_script(cryptojs)
+        browser = p.chromium.launch(
+            headless=False,
+            proxy={"server": PROXY_SERVER}
+        )
 
-    # ✅ 2. 注入 Authentication（从外部 JS 文件加载）
-    with open("authentication.js", "r", encoding="utf-8") as f:
-        auth_script = f.read()
+        context = browser.new_context(
+            user_agent=(
+                "B700-V2A|Mozilla|5.0|ztebw(Chrome)|1.2.0;"
+                "Resolution(PAL,720p,1080i) AppleWebKit/535.7 "
+                "(KHTML, like Gecko) Chrome/16.0.912.63 Safari/535.7"
+            )
+        )
 
-    # 替换占位符
-    auth_script = auth_script.replace("__AccessMethod__", "dhcp")
-    auth_script = auth_script.replace("__AccessUserName__", f"{UserID}@vod")
-    auth_script = auth_script.replace("__UserID__", UserID)
-    auth_script = auth_script.replace("__stbId__", stbId)
-    auth_script = auth_script.replace("__ipadress__", ipadress)
-    auth_script = auth_script.replace("__Macadress__", Macadress)
-    auth_script = auth_script.replace("__PassWord__", PassWord)
+        # 注入 JS（建议在 new_page 前做）
+        context.add_init_script(cryptojs)
+        context.add_init_script(authjs)
+        context.add_init_script(mediaplayerjs)
 
-    page.add_init_script(auth_script)
+        page = context.new_page()
 
-    print("打开认证页面", flush=True)
-    # ✅ 3. 打开认证页面
-    page.goto(
-        f"http://itv.jsinfo.net:8298/auth?UserID={UserID}&Action=Login",
-        wait_until="domcontentloaded"
-    )
+        print(f"🌐 打开认证页面: {AUTH_URL}", flush=True)
 
-    # 等待 frameset_builder.jsp 响应
-    while not state["done"]:
-        page.wait_for_timeout(100)
+        page.goto(AUTH_URL, wait_until="domcontentloaded")
 
-    # 等待 JS 执行完成
-    page.wait_for_timeout(3000)
+        
+        # first_channel_play 
+        # 可选：更优等待方式（比 sleep 更稳）
+        page.wait_for_function(
+            "() => window.Authentication && window.Authentication.CTCGetConfig('ShowPic') == 2",
+        )
 
-    # 输出 Authentication.config 到文件
-    config = page.evaluate("() => window.Authentication.config")
-    with open("authentication_config.json", "w", encoding="utf-8") as f:
-        json.dump(config, f, ensure_ascii=False, indent=2)
-    print("Authentication已保存到 authentication_config.json", flush=True)
+        config = page.evaluate("() => window.Authentication.config")
 
-    browser.close()
+        OUTPUT_PATH.write_text(
+            json.dumps(config, ensure_ascii=False, indent=2),
+            encoding="utf-8"
+        )
+
+        print(f"💾 已保存: {OUTPUT_PATH}", flush=True)
+
+        browser.close()
+
+
+if __name__ == "__main__":
+    run()
