@@ -57,7 +57,7 @@ def run():
         print("🚀 启动 Chromium...", flush=True)
 
         browser = p.chromium.launch(
-            headless=False,
+            headless=True,
             proxy={"server": PROXY_SERVER}
         )
 
