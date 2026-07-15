@@ -2,6 +2,9 @@
 
 模拟机顶盒认证流程，获取频道列表并生成 M3U 播放列表。
 
+<img width="1402" height="1122" alt="ChatGPT Image 2026年7月15日 11_15_28" src="https://github.com/user-attachments/assets/185018bd-b750-4311-900e-69bb84c4b00e" />
+
+
 ## 安装依赖
 
 ### 1. 安装 Python 依赖
