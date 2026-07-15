@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ####################################
-# OpenWrt IPTV Auth (Optimized & Fixed)
+# OpenWrt IPTV Spider  可以在OpenWrt上执行，直接抓取播放源
 ####################################
 
 # --- 配置区 ---
