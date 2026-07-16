@@ -4,6 +4,21 @@
 
 <img width="1402" height="1122" alt="howto" src="howto.png" />
 
+## 必须的相关信息
+
+可通过抓包从 `http://180.100.134.11:5050/web/tr069` 的 POST 请求中获取。
+
+| 参数 | 说明 | 来源 |
+|------|------|------|
+| IPTV 账号 | 12 位数字 | `Device.ManagementServer.IPTVServiceUsername` |
+| IPTV 密码 | 6 位数字 | `Device.ManagementServer.ADSLPassword` |
+| 机顶盒编号 | 贴在机顶盒背面 | `Device.X_CTC_IPTV.STBID` |
+| 机顶盒 MAC 地址 | 贴在机顶盒背面 | `Device.LAN.MACAddress` |
+
+
+
+
+
 ## 目录结构
 
 ```
