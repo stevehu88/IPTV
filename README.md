@@ -2,7 +2,7 @@
 
 模拟机顶盒认证流程，获取频道列表并生成 M3U 播放列表。
 
-<img width="1402" height="1122" alt="howto" src="run_on_windows/howto.png" />
+<img width="1402" height="1122" alt="howto" src="howto.png" />
 
 ## 目录结构
 
