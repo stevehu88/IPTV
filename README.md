@@ -50,15 +50,16 @@
 **目的**：模拟机顶盒 DHCP 认证过程，使 OpenWrt 的 WAN 口获取 IPTV 专网 IP 地址。
 
 **所需信息**：
-1. 机顶盒的 hostname
-2. 加密的 option60 十六进制数据（可借助 `option60_toolkit.py` 生成）
+1. ✅加密的 option60 十六进制数据（可借助 `option60_toolkit.py` 生成）
+2. ❌不需要option12，即hostname
+3. ❌不需要机顶盒的mac地址
+
 
 **配置步骤**：
 
 SSH 到 OpenWrt 后台执行：
 
 ```bash
-uci set network.wan.hostname='机顶盒的hostname'
 uci set network.wan.sendopts='0x3c:加密的option60十六进制数据'
 uci commit network
 ifdown wan
