@@ -8,7 +8,6 @@
 
 - OpenWrt 路由器
 - 机顶盒信息：
-  - hostname（机顶盒主机名）
   - IPTV 密码（6 位数字）
   - IPTV 账号
 
@@ -58,9 +57,6 @@ pip install pycryptodome
 SSH 登录 OpenWrt 后台，执行以下命令：
 
 ```bash
-# 设置 hostname（机顶盒主机名）
-uci set network.wan.hostname='机顶盒的hostname'
-
 # 设置 Option 60 字段
 uci set network.wan.sendopts='0x3c:生成的Option60十六进制数据'
 
